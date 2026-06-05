@@ -1,0 +1,38 @@
+name: Daily push reminders
+
+on:
+  schedule:
+    # Runs every 15 minutes. GitHub cron is UTC and can be delayed a few
+    # minutes under load, which is fine for a daily reminder. The sender
+    # script decides who is actually "due" based on each user's timezone.
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}   # lets you run it manually from the Actions tab to test
+
+# Avoid overlapping runs
+concurrency:
+  group: push-reminders
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install web-push@^3 @supabase/supabase-js@^2
+
+      - name: Send due reminders
+        run: node .github/scripts/send-reminders.js
+        env:
+          VAPID_PUBLIC:        ${{ secrets.VAPID_PUBLIC }}
+          VAPID_PRIVATE:       ${{ secrets.VAPID_PRIVATE }}
+          VAPID_SUBJECT:       ${{ secrets.VAPID_SUBJECT }}
+          SUPABASE_URL:        ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
